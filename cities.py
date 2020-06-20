@@ -1,5 +1,12 @@
+import json
+
+
+with open("cities.json") as fp:
+    _CITIES = tuple(json.load(fp))
+
+
 def get_cities():
-    return ["Москва", "Санкт-Петербург"]
+    return _CITIES
 
 
 def get_city_by_post(post, *, vk):
