@@ -1,10 +1,9 @@
-from time import time as get_current_time
+import time
 
 import vk_api
 
-from foodsharing_groups import get_foodsharing_groups
 from cities import get_city_by_post
-from groups_posts import fetch_groups_posts
+from newsfeed_posts import fetch_new_posts
 
 from settings import collection_bot_login, collection_bot_password, token
 
@@ -29,12 +28,11 @@ def main():
     bot_vk_session = vk_api.VkApi(token=token)
     bot_vk = bot_vk_session.get_api()
 
-    last_update_time = int(get_current_time())
+    last_update_time = int(time.time())
     while True:
-        current_update_time = int(get_current_time())
-        foodsharing_groups = get_foodsharing_groups(vk=collector_vk)
-        new_posts = fetch_groups_posts(
-            [group["id"] for group in foodsharing_groups],
+        time.sleep(60)
+        current_update_time = int(time.time())
+        new_posts = fetch_new_posts(
             time_begin=last_update_time, time_end=current_update_time,
             vk=collector_vk
         )
