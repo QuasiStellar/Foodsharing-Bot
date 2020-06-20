@@ -1,4 +1,5 @@
 # TODO: may ship or duplicate elements, fix it
+# TODO: count to compare
 def _get_whole_list(*, fetching_func, max_count):
     offset = 0
     while True:
