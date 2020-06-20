@@ -1,11 +1,9 @@
-from itertools import takewhile
-
-from extend_vk_method import extend_vk_method
-
-
 def fetch_new_posts(time_begin, time_end, *, vk):
-    get_news = extend_vk_method(vk.newsfeed.get, max_count=100)
-    result_posts = takewhile(lambda post: post["date"] >= time_begin, get_news(filters=["post"]))
+    result_posts = vk.newsfeed.get(filters=["post"], count=100)["items"]  # TODO: don't skip posts
+    for post in result_posts:
+        post["owner_id"] = post["source_id"]
+        post["id"] = post["post_id"]
+    # result_posts = takewhile(lambda post: post["date"] >= time_begin, result_posts)
     result_posts = filter(
         lambda post: time_begin <= post["date"] < time_end,
         result_posts
