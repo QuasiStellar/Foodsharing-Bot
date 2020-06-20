@@ -41,3 +41,7 @@ def main():
         for post in new_posts:
             process_post(post, bot_vk=bot_vk, collector_vk=collector_vk)
         last_update_time = current_update_time
+
+
+if __name__ == '__main__':
+    main()
