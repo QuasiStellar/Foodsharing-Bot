@@ -15,22 +15,27 @@ categories = {1: 'Выпечка',
                     8: 'Салаты',
                     9: 'Сладости'}
 
+white = VkKeyboardColor.DEFAULT
+blue = VkKeyboardColor.PRIMARY
+green = VkKeyboardColor.POSITIVE
+red = VkKeyboardColor.NEGATIVE
+
 
 def get_priority_kb(current_priority):
     priority_kb = VkKeyboard(one_time=False)
-    priority_kb.add_button(categories[1], color=VkKeyboardColor.PRIMARY if current_priority >> 0 & 1 else VkKeyboardColor.DEFAULT)
-    priority_kb.add_button(categories[2], color=VkKeyboardColor.PRIMARY if current_priority >> 1 & 1 else VkKeyboardColor.DEFAULT)
-    priority_kb.add_button(categories[3], color=VkKeyboardColor.PRIMARY if current_priority >> 2 & 1 else VkKeyboardColor.DEFAULT)
+    priority_kb.add_button(categories[1], color=blue if current_priority >> 0 & 1 else white)
+    priority_kb.add_button(categories[2], color=blue if current_priority >> 1 & 1 else white)
+    priority_kb.add_button(categories[3], color=blue if current_priority >> 2 & 1 else white)
     priority_kb.add_line()
-    priority_kb.add_button(categories[4], color=VkKeyboardColor.PRIMARY if current_priority >> 3 & 1 else VkKeyboardColor.DEFAULT)
-    priority_kb.add_button(categories[5], color=VkKeyboardColor.PRIMARY if current_priority >> 4 & 1 else VkKeyboardColor.DEFAULT)
-    priority_kb.add_button(categories[6], color=VkKeyboardColor.PRIMARY if current_priority >> 5 & 1 else VkKeyboardColor.DEFAULT)
+    priority_kb.add_button(categories[4], color=blue if current_priority >> 3 & 1 else white)
+    priority_kb.add_button(categories[5], color=blue if current_priority >> 4 & 1 else white)
+    priority_kb.add_button(categories[6], color=blue if current_priority >> 5 & 1 else white)
     priority_kb.add_line()
-    priority_kb.add_button(categories[7], color=VkKeyboardColor.PRIMARY if current_priority >> 6 & 1 else VkKeyboardColor.DEFAULT)
-    priority_kb.add_button(categories[8], color=VkKeyboardColor.PRIMARY if current_priority >> 7 & 1 else VkKeyboardColor.DEFAULT)
-    priority_kb.add_button(categories[9], color=VkKeyboardColor.PRIMARY if current_priority >> 8 & 1 else VkKeyboardColor.DEFAULT)
+    priority_kb.add_button(categories[7], color=blue if current_priority >> 6 & 1 else white)
+    priority_kb.add_button(categories[8], color=blue if current_priority >> 7 & 1 else white)
+    priority_kb.add_button(categories[9], color=blue if current_priority >> 8 & 1 else white)
     priority_kb.add_line()
-    priority_kb.add_button('Готово', color=VkKeyboardColor.POSITIVE)
+    priority_kb.add_button('Готово', color=green)
     return priority_kb
 
 
@@ -44,15 +49,15 @@ def main():
     requests = {}
 
     menu_kb = VkKeyboard(one_time=True)
-    menu_kb.add_button('Отдать еду', color=VkKeyboardColor.POSITIVE)
+    menu_kb.add_button('Отдать еду', color=green)
     menu_kb.add_line()
-    menu_kb.add_button('Выбрать категории', color=VkKeyboardColor.DEFAULT)
+    menu_kb.add_button('Выбрать категории', color=white)
     menu_kb.add_line()
-    menu_kb.add_button('Изменить город', color=VkKeyboardColor.DEFAULT)
-    menu_kb.add_button('Изменить адрес', color=VkKeyboardColor.DEFAULT)
+    menu_kb.add_button('Изменить город', color=white)
+    menu_kb.add_button('Изменить адрес', color=white)
 
     to_menu_kb = VkKeyboard(one_time=True)
-    to_menu_kb.add_button('В меню', color=VkKeyboardColor.DEFAULT)
+    to_menu_kb.add_button('В меню', color=white)
 
 
     while 'my guitar gently weeps':
@@ -171,6 +176,13 @@ def main():
                                 del sessions[user_id]
 
                                 ### DISTRIBUTION HAPPENDS HERE ###
+
+                                c.execute('SELECT city FROM users WHERE id = %s;', (user_id, ))
+                                city = c.fetchone()[0]
+                                c.execute('SELECT id, address, priority FROM users WHERE city = %s;', (city, ))
+                                for recipient in c.fetchall():
+                                    if recipient[0] != user_id and recipient[2] & requests[user_id]['categories']:
+                                        vk.messages.send(user_id=recipient[0], message=requests[user_id]['description'] + '\nАдрес: ' + requests[user_id]['address'] + '\nВремя: ' + requests[user_id]['time'] + '\n\nСвязаться с создателем раздачи: https://vk.com/id' + str(user_id), random_id=get_random_id())
 
                                 ### DISTRIBUTION HAPPENDS HERE ###
 
