@@ -4,7 +4,7 @@ from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 from vk_api.utils import get_random_id
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from settings import token, group_id, user, password, host
-from antimat import check_slang
+from censor import check_slang
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 
@@ -15,7 +15,7 @@ categories = {1: 'Выпечка',
                     4: 'Напитки',
                     5: 'Супы',
                     6: 'Мясное',
-                    7: 'Крупы',
+                    7: 'Бакалея',
                     8: 'Салаты',
                     9: 'Сладости'}
 
@@ -62,6 +62,8 @@ def main():
 
     to_menu_kb = VkKeyboard(one_time=True)
     to_menu_kb.add_button('В меню', color=white)
+    # priority_kb.add_line()
+    # to_menu_kb.add_button('В меню', color=white)
 
 
     while 'my guitar gently weeps':
@@ -117,13 +119,13 @@ def main():
                             vk.messages.send(user_id=user_id, message='Выберите пункт меню.', random_id=get_random_id(), keyboard=menu_kb.get_keyboard())
 
                         elif sessions[user_id] == 'waiting for city first':
-                            c.execute('UPDATE users SET city = %s WHERE id = %s;', (text, user_id))
+                            c.execute('UPDATE users SET city = %s WHERE id = %s;', (text.lower(), user_id))
                             connection.commit()
                             sessions[user_id] = 'waiting for address first'
                             vk.messages.send(user_id=user_id, message='Город обновлён: ' + text + '\n\nУкажите ваш адрес.', random_id=get_random_id())
 
                         elif sessions[user_id] == 'waiting for address first':
-                            c.execute('UPDATE users SET address = %s WHERE id = %s;', (text, user_id))
+                            c.execute('UPDATE users SET address = %s WHERE id = %s;', (text.lower(), user_id))
                             connection.commit()
                             sessions[user_id] = 'waiting for category'
                             c.execute('SELECT priority FROM users WHERE id = %s;', (user_id, ))
@@ -132,13 +134,13 @@ def main():
                             vk.messages.send(user_id=user_id, message='Адрес обновлён: ' + text + '\n\nВыберите категории продуктов, уведомления о раздаче которых вы бы хотели получать.', random_id=get_random_id(), keyboard=kb.get_keyboard())
 
                         elif sessions[user_id] == 'waiting for city':
-                            c.execute('UPDATE users SET city = %s WHERE id = %s;', (text, user_id))
+                            c.execute('UPDATE users SET city = %s WHERE id = %s;', (text.lower(), user_id))
                             connection.commit()
                             sessions[user_id] = 'waiting for address'
                             vk.messages.send(user_id=user_id, message='Город обновлён: ' + text + '\n\nУкажите ваш адрес.', random_id=get_random_id())
 
                         elif sessions[user_id] == 'waiting for address':
-                            c.execute('UPDATE users SET address = %s WHERE id = %s;', (text, user_id))
+                            c.execute('UPDATE users SET address = %s WHERE id = %s;', (text.lower(), user_id))
                             connection.commit()
                             del sessions[user_id]
                             vk.messages.send(user_id=user_id, message='Адрес обновлён: ' + text, random_id=get_random_id(), keyboard=menu_kb.get_keyboard())
@@ -198,7 +200,9 @@ def main():
                                 geolocator = Nominatim(user_agent="FoodsharingBot")
                                 try:
                                     location1 = geolocator.geocode(city + ' ' + recipient[1])
+                                    print(location1)
                                     location2 = geolocator.geocode(city + ' ' + requests[user_id]['address'])
+                                    print(location2)
                                     distance = geodesic((location1.latitude, location1.longitude), (location2.latitude, location2.longitude))
                                     distance = round(float(str(distance)[:-3]), 1)
                                 except AttributeError:
@@ -212,7 +216,6 @@ def main():
                             vk.messages.send(user_id=user_id, message='Оповещения о раздаче разосланы!', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
 
                     else:
-                        if text.lower() != 'начать': continue
                         c.execute('INSERT users(id, city, address, priority, rating) VALUES (%s, "", "", 0, 0);', (user_id, ))
                         connection.commit()
                         vk.messages.send(user_id=user_id, message='Укажите ваш город. Убедитесь, что название написано правильно.', random_id=get_random_id())
