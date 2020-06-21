@@ -10,6 +10,8 @@ from newsfeed_posts import fetch_new_posts
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 
+#from lemmatizer import find_post_categories
+
 from settings import collection_bot_login, collection_bot_password, token, host, user, password
 
 
@@ -32,8 +34,8 @@ def process_post(post, *, bot_vk, collector_vk):
                 distance = round(float(str(distance)[:-3]), 1)
             except AttributeError:
                 distance = False
-            if True:#recipient[2] & requests[user_id]['categories']:
-                bot_vk.messages.send(user_id=recipient[0], message='Новое предложение:', random_id=get_random_id(), attachment='wall%s_%s' % (post['owner_id'], post['id']))
+            if recipient[2]:# & find_post_categories(post['text']):
+                bot_vk.messages.send(user_id=recipient[0], message='Новое предложение' + (' в ' + str(distance) + ' км от вас') if distance else '' + ':', random_id=get_random_id(), attachment='wall%s_%s' % (post['owner_id'], post['id']))
 
 
 def main():
