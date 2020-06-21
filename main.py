@@ -62,8 +62,6 @@ def main():
 
     to_menu_kb = VkKeyboard(one_time=True)
     to_menu_kb.add_button('В меню', color=white)
-    # priority_kb.add_line()
-    # to_menu_kb.add_button('В меню', color=white)
 
 
     while 'my guitar gently weeps':
