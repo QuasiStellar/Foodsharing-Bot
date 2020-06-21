@@ -49,7 +49,7 @@ def main():
 
         last_update_time = int(time.time())
         while True:
-            time.sleep(10)
+            time.sleep(60)
             current_update_time = int(time.time())
             new_posts = fetch_new_posts(
                 time_begin=last_update_time, time_end=current_update_time,
