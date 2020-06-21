@@ -66,163 +66,163 @@ def main():
 
     while 'my guitar gently weeps':
         for event in longpoll.listen():
-            # try:
-            if event.type == VkBotEventType.MESSAGE_NEW:
-                connection = pymysql.connect(host, user, password, user + '$foodsharing')
-                with connection:
+            try:
+                if event.type == VkBotEventType.MESSAGE_NEW:
+                    connection = pymysql.connect(host, user, password, user + '$foodsharing')
+                    with connection:
 
-                    ##### BOT LOGIC #####
+                        ##### BOT LOGIC #####
 
-                    c = connection.cursor()
-                    user_id = event.obj.message['from_id']
-                    text = event.obj.message['text']
-                    if check_slang(text):
-                        c.execute('UPDATE users SET address = "ban" WHERE id = %s;', (user_id, ))
-                    message_id = event.obj.message['id']
-                    c.execute('SELECT EXISTS(SELECT id FROM users WHERE id = %s);', (user_id, ))
-                    if c.fetchone()[0]:
+                        c = connection.cursor()
+                        user_id = event.obj.message['from_id']
+                        text = event.obj.message['text']
+                        if check_slang(text):
+                            c.execute('UPDATE users SET address = "ban" WHERE id = %s;', (user_id, ))
+                        message_id = event.obj.message['id']
+                        c.execute('SELECT EXISTS(SELECT id FROM users WHERE id = %s);', (user_id, ))
+                        if c.fetchone()[0]:
 
-                        c.execute('SELECT address FROM users WHERE id = %s;', (user_id, ))
-                        if c.fetchone()[0] == 'ban':
-                            vk.messages.send(user_id=user_id, message='Вы заблокированы в системе за использование ненормативной лексики.', random_id=get_random_id())
-                        elif user_id not in sessions:
+                            c.execute('SELECT address FROM users WHERE id = %s;', (user_id, ))
+                            if c.fetchone()[0] == 'ban':
+                                vk.messages.send(user_id=user_id, message='Вы заблокированы в системе за использование ненормативной лексики.', random_id=get_random_id())
+                            elif user_id not in sessions:
 
-                            if text == 'Отдать еду':
-                                if not vk.users.get(user_ids=[user_id], fields=["can_write_private_message"])[0]["can_write_private_message"]:
-                                    vk.messages.send(user_id=user_id, message='Необходимо открыть личные сообщения, так с вами можно будет связаться.', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
+                                if text == 'Отдать еду':
+                                    if not vk.users.get(user_ids=[user_id], fields=["can_write_private_message"])[0]["can_write_private_message"]:
+                                        vk.messages.send(user_id=user_id, message='Необходимо открыть личные сообщения, так с вами можно будет связаться.', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
+                                    else:
+                                        vk.messages.send(user_id=user_id, message='Укажите адрес раздачи.', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
+                                        sessions[user_id] = 'waiting for dist. address'
+
+                                elif text == 'Выбрать категории':
+                                    c.execute('SELECT priority FROM users WHERE id = %s;', (user_id, ))
+                                    current_priority = c.fetchone()[0]
+                                    kb = get_priority_kb(current_priority)
+                                    vk.messages.send(user_id=user_id, message='Выберите категории продуктов, уведомления о раздаче которых вы бы хотели получать.', random_id=get_random_id(), keyboard=kb.get_keyboard())
+                                    sessions[user_id] = 'waiting for category'
+
+                                elif text == 'Изменить город':
+                                    vk.messages.send(user_id=user_id, message='Укажите ваш город. Убедитесь, что название написано правильно.', random_id=get_random_id())
+                                    sessions[user_id] = 'waiting for city'
+
+                                elif text == 'Изменить адрес':
+                                    vk.messages.send(user_id=user_id, message='Укажите ваш адрес.', random_id=get_random_id())
+                                    sessions[user_id] = 'waiting for address'
+
                                 else:
-                                    vk.messages.send(user_id=user_id, message='Укажите адрес раздачи.', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
-                                    sessions[user_id] = 'waiting for dist. address'
+                                    vk.messages.send(user_id=user_id, message='Выберите пункт меню.', random_id=get_random_id(), keyboard=menu_kb.get_keyboard())
 
-                            elif text == 'Выбрать категории':
+                            elif text == 'В меню':
+                                del sessions[user_id]
+                                vk.messages.send(user_id=user_id, message='Выберите пункт меню.', random_id=get_random_id(), keyboard=menu_kb.get_keyboard())
+
+                            elif sessions[user_id] == 'waiting for city first':
+                                c.execute('UPDATE users SET city = %s WHERE id = %s;', (text.lower(), user_id))
+                                connection.commit()
+                                sessions[user_id] = 'waiting for address first'
+                                vk.messages.send(user_id=user_id, message='Город обновлён: ' + text + '\n\nУкажите ваш адрес.', random_id=get_random_id())
+
+                            elif sessions[user_id] == 'waiting for address first':
+                                c.execute('UPDATE users SET address = %s WHERE id = %s;', (text.lower(), user_id))
+                                connection.commit()
+                                sessions[user_id] = 'waiting for category'
                                 c.execute('SELECT priority FROM users WHERE id = %s;', (user_id, ))
                                 current_priority = c.fetchone()[0]
                                 kb = get_priority_kb(current_priority)
-                                vk.messages.send(user_id=user_id, message='Выберите категории продуктов, уведомления о раздаче которых вы бы хотели получать.', random_id=get_random_id(), keyboard=kb.get_keyboard())
-                                sessions[user_id] = 'waiting for category'
+                                vk.messages.send(user_id=user_id, message='Адрес обновлён: ' + text + '\n\nВыберите категории продуктов, уведомления о раздаче которых вы бы хотели получать.', random_id=get_random_id(), keyboard=kb.get_keyboard())
 
-                            elif text == 'Изменить город':
-                                vk.messages.send(user_id=user_id, message='Укажите ваш город. Убедитесь, что название написано правильно.', random_id=get_random_id())
-                                sessions[user_id] = 'waiting for city'
-
-                            elif text == 'Изменить адрес':
-                                vk.messages.send(user_id=user_id, message='Укажите ваш адрес.', random_id=get_random_id())
-                                sessions[user_id] = 'waiting for address'
-
-                            else:
-                                vk.messages.send(user_id=user_id, message='Выберите пункт меню.', random_id=get_random_id(), keyboard=menu_kb.get_keyboard())
-
-                        elif text == 'В меню':
-                            del sessions[user_id]
-                            vk.messages.send(user_id=user_id, message='Выберите пункт меню.', random_id=get_random_id(), keyboard=menu_kb.get_keyboard())
-
-                        elif sessions[user_id] == 'waiting for city first':
-                            c.execute('UPDATE users SET city = %s WHERE id = %s;', (text.lower(), user_id))
-                            connection.commit()
-                            sessions[user_id] = 'waiting for address first'
-                            vk.messages.send(user_id=user_id, message='Город обновлён: ' + text + '\n\nУкажите ваш адрес.', random_id=get_random_id())
-
-                        elif sessions[user_id] == 'waiting for address first':
-                            c.execute('UPDATE users SET address = %s WHERE id = %s;', (text.lower(), user_id))
-                            connection.commit()
-                            sessions[user_id] = 'waiting for category'
-                            c.execute('SELECT priority FROM users WHERE id = %s;', (user_id, ))
-                            current_priority = c.fetchone()[0]
-                            kb = get_priority_kb(current_priority)
-                            vk.messages.send(user_id=user_id, message='Адрес обновлён: ' + text + '\n\nВыберите категории продуктов, уведомления о раздаче которых вы бы хотели получать.', random_id=get_random_id(), keyboard=kb.get_keyboard())
-
-                        elif sessions[user_id] == 'waiting for city':
-                            c.execute('UPDATE users SET city = %s WHERE id = %s;', (text.lower(), user_id))
-                            connection.commit()
-                            sessions[user_id] = 'waiting for address'
-                            vk.messages.send(user_id=user_id, message='Город обновлён: ' + text + '\n\nУкажите ваш адрес.', random_id=get_random_id())
-
-                        elif sessions[user_id] == 'waiting for address':
-                            c.execute('UPDATE users SET address = %s WHERE id = %s;', (text.lower(), user_id))
-                            connection.commit()
-                            del sessions[user_id]
-                            vk.messages.send(user_id=user_id, message='Адрес обновлён: ' + text, random_id=get_random_id(), keyboard=menu_kb.get_keyboard())
-
-                        elif sessions[user_id] == 'waiting for category':
-                            if text in categories.values():
-                                c.execute('SELECT priority FROM users WHERE id = %s;', (user_id, ))
-                                current_priority = c.fetchone()[0]
-                                current_priority ^= 1 << list(categories.keys())[list(categories.values()).index(text)] - 1
-                                c.execute('UPDATE users SET priority = %s WHERE id = %s;', (current_priority, user_id))
+                            elif sessions[user_id] == 'waiting for city':
+                                c.execute('UPDATE users SET city = %s WHERE id = %s;', (text.lower(), user_id))
                                 connection.commit()
-                                vk.messages.send(user_id=user_id, message='Изменения внесены.', random_id=get_random_id(), keyboard=get_priority_kb(current_priority).get_keyboard())
-                            elif text == 'Готово':
-                                c.execute('SELECT priority FROM users WHERE id = %s;', (user_id, ))
-                                current_priority = c.fetchone()[0]
-                                if current_priority == 0:
-                                    message = 'Ничего не выбрано. Вы не будете получать оповещения о новых раздачах. Чтобы изменить это, выберете несколько категорий.'
-                                else:
-                                    message = 'Выбранные категории: '
-                                    for i in range(9):
-                                        if current_priority >> i & 1:
-                                            message += '\n' + categories[i + 1]
-                                vk.messages.send(user_id=user_id, message=message, random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
+                                sessions[user_id] = 'waiting for address'
+                                vk.messages.send(user_id=user_id, message='Город обновлён: ' + text + '\n\nУкажите ваш адрес.', random_id=get_random_id())
 
-                        elif sessions[user_id] == 'waiting for dist. address':
-                            requests[user_id] = {'address': text, 'categories': 0, 'description': '', 'time': ''}
-                            sessions[user_id] = 'waiting for dist. categories'
-                            vk.messages.send(user_id=user_id, message='Выберите категории отдаваемых продуктов.', random_id=get_random_id(), keyboard=get_priority_kb(0).get_keyboard())
+                            elif sessions[user_id] == 'waiting for address':
+                                c.execute('UPDATE users SET address = %s WHERE id = %s;', (text.lower(), user_id))
+                                connection.commit()
+                                del sessions[user_id]
+                                vk.messages.send(user_id=user_id, message='Адрес обновлён: ' + text, random_id=get_random_id(), keyboard=menu_kb.get_keyboard())
 
-                        elif sessions[user_id] == 'waiting for dist. categories':
-                            if text in categories.values():
-                                requests[user_id]['categories'] ^= 1 << list(categories.keys())[list(categories.values()).index(text)] - 1
-                                vk.messages.send(user_id=user_id, message='Изменения внесены.', random_id=get_random_id(), keyboard=get_priority_kb(requests[user_id]['categories']).get_keyboard())
-                            elif text == 'Готово':
-                                sessions[user_id] = 'waiting for dist. description'
-                                vk.messages.send(user_id=user_id, message='Опишите отдаваемые продукты.', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
+                            elif sessions[user_id] == 'waiting for category':
+                                if text in categories.values():
+                                    c.execute('SELECT priority FROM users WHERE id = %s;', (user_id, ))
+                                    current_priority = c.fetchone()[0]
+                                    current_priority ^= 1 << list(categories.keys())[list(categories.values()).index(text)] - 1
+                                    c.execute('UPDATE users SET priority = %s WHERE id = %s;', (current_priority, user_id))
+                                    connection.commit()
+                                    vk.messages.send(user_id=user_id, message='Изменения внесены.', random_id=get_random_id(), keyboard=get_priority_kb(current_priority).get_keyboard())
+                                elif text == 'Готово':
+                                    c.execute('SELECT priority FROM users WHERE id = %s;', (user_id, ))
+                                    current_priority = c.fetchone()[0]
+                                    if current_priority == 0:
+                                        message = 'Ничего не выбрано. Вы не будете получать оповещения о новых раздачах. Чтобы изменить это, выберете несколько категорий.'
+                                    else:
+                                        message = 'Выбранные категории: '
+                                        for i in range(9):
+                                            if current_priority >> i & 1:
+                                                message += '\n' + categories[i + 1]
+                                    vk.messages.send(user_id=user_id, message=message, random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
 
-                        elif sessions[user_id] == 'waiting for dist. description':
-                            requests[user_id]['description'] = text
-                            sessions[user_id] = 'waiting for dist. time'
-                            vk.messages.send(user_id=user_id, message='Укажите время раздачи.', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
+                            elif sessions[user_id] == 'waiting for dist. address':
+                                requests[user_id] = {'address': text, 'categories': 0, 'description': '', 'time': ''}
+                                sessions[user_id] = 'waiting for dist. categories'
+                                vk.messages.send(user_id=user_id, message='Выберите категории отдаваемых продуктов.', random_id=get_random_id(), keyboard=get_priority_kb(0).get_keyboard())
 
-                        elif sessions[user_id] == 'waiting for dist. time':
-                            requests[user_id]['time'] = text
-                            sessions[user_id] = 'waiting for dist. image'
-                            vk.messages.send(user_id=user_id, message='Прикрепите фотографию продукта.', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
+                            elif sessions[user_id] == 'waiting for dist. categories':
+                                if text in categories.values():
+                                    requests[user_id]['categories'] ^= 1 << list(categories.keys())[list(categories.values()).index(text)] - 1
+                                    vk.messages.send(user_id=user_id, message='Изменения внесены.', random_id=get_random_id(), keyboard=get_priority_kb(requests[user_id]['categories']).get_keyboard())
+                                elif text == 'Готово':
+                                    sessions[user_id] = 'waiting for dist. description'
+                                    vk.messages.send(user_id=user_id, message='Опишите отдаваемые продукты.', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
 
-                        elif sessions[user_id] == 'waiting for dist. image':
-                            del sessions[user_id]
+                            elif sessions[user_id] == 'waiting for dist. description':
+                                requests[user_id]['description'] = text
+                                sessions[user_id] = 'waiting for dist. time'
+                                vk.messages.send(user_id=user_id, message='Укажите время раздачи.', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
 
-                            ### DISTRIBUTION HAPPENDS HERE ###
+                            elif sessions[user_id] == 'waiting for dist. time':
+                                requests[user_id]['time'] = text
+                                sessions[user_id] = 'waiting for dist. image'
+                                vk.messages.send(user_id=user_id, message='Прикрепите фотографию продукта.', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
 
-                            c.execute('SELECT city FROM users WHERE id = %s;', (user_id, ))
-                            city = c.fetchone()[0]
-                            c.execute('SELECT id, address, priority FROM users WHERE city = %s;', (city, ))
-                            for recipient in c.fetchall():
-                                geolocator = Nominatim(user_agent="FoodsharingBot")
-                                try:
-                                    location1 = geolocator.geocode(city + ' ' + recipient[1])
-                                    print(location1)
-                                    location2 = geolocator.geocode(city + ' ' + requests[user_id]['address'])
-                                    print(location2)
-                                    distance = geodesic((location1.latitude, location1.longitude), (location2.latitude, location2.longitude))
-                                    distance = round(float(str(distance)[:-3]), 1)
-                                except AttributeError:
-                                    distance = False
-                                if recipient[0] != user_id and recipient[2] & requests[user_id]['categories']:
-                                    vk.messages.send(user_id=recipient[0], message=requests[user_id]['description'] + '\nАдрес: ' + requests[user_id]['address'] + '\nРасстояние до вас: ' + ((str(distance) + ' км') if distance else 'Не удалось определить :(') + '\nВремя: ' + requests[user_id]['time'] + '\n\nСвязаться с создателем раздачи:', random_id=get_random_id(), forward_messages=[message_id])
+                            elif sessions[user_id] == 'waiting for dist. image':
+                                del sessions[user_id]
 
-                            ### DISTRIBUTION HAPPENDS HERE ###
+                                ### DISTRIBUTION HAPPENDS HERE ###
 
-                            del requests[user_id]
-                            vk.messages.send(user_id=user_id, message='Оповещения о раздаче разосланы!', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
+                                c.execute('SELECT city FROM users WHERE id = %s;', (user_id, ))
+                                city = c.fetchone()[0]
+                                c.execute('SELECT id, address, priority FROM users WHERE city = %s;', (city, ))
+                                for recipient in c.fetchall():
+                                    geolocator = Nominatim(user_agent="FoodsharingBot")
+                                    try:
+                                        location1 = geolocator.geocode(city + ' ' + recipient[1])
+                                        print(location1)
+                                        location2 = geolocator.geocode(city + ' ' + requests[user_id]['address'])
+                                        print(location2)
+                                        distance = geodesic((location1.latitude, location1.longitude), (location2.latitude, location2.longitude))
+                                        distance = round(float(str(distance)[:-3]), 1)
+                                    except AttributeError:
+                                        distance = False
+                                    if recipient[0] != user_id and recipient[2] & requests[user_id]['categories']:
+                                        vk.messages.send(user_id=recipient[0], message=requests[user_id]['description'] + '\nАдрес: ' + requests[user_id]['address'] + '\nРасстояние до вас: ' + ((str(distance) + ' км') if distance else 'Не удалось определить :(') + '\nВремя: ' + requests[user_id]['time'] + '\n\nСвязаться с создателем раздачи:', random_id=get_random_id(), forward_messages=[message_id])
 
-                    else:
-                        c.execute('INSERT users(id, city, address, priority, rating) VALUES (%s, "", "", 0, 0);', (user_id, ))
-                        connection.commit()
-                        vk.messages.send(user_id=user_id, message='Укажите ваш город. Убедитесь, что название написано правильно.', random_id=get_random_id())
-                        sessions[user_id] = 'waiting for city first'
+                                ### DISTRIBUTION HAPPENDS HERE ###
 
-                    ##### BOT LOGIC #####
+                                del requests[user_id]
+                                vk.messages.send(user_id=user_id, message='Оповещения о раздаче разосланы!', random_id=get_random_id(), keyboard=to_menu_kb.get_keyboard())
 
-            # except Exception as e:
-            #     print(e, flush=True)
+                        else:
+                            c.execute('INSERT users(id, city, address, priority, rating) VALUES (%s, "", "", 0, 0);', (user_id, ))
+                            connection.commit()
+                            vk.messages.send(user_id=user_id, message='Укажите ваш город. Убедитесь, что название написано правильно.', random_id=get_random_id())
+                            sessions[user_id] = 'waiting for city first'
+
+                        ##### BOT LOGIC #####
+
+            except Exception as e:
+                print(e, flush=True)
 
 
 print('Start!', flush=True)
