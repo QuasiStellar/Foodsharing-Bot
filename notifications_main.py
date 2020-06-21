@@ -36,7 +36,9 @@ def main():
             time_begin=last_update_time, time_end=current_update_time,
             vk=collector_vk
         )
+        new_posts = sorted(new_posts, key=lambda post: post["date"])
         for post in new_posts:
+            # TODO: try/except
             process_post(post, bot_vk=bot_vk, collector_vk=collector_vk)
         last_update_time = current_update_time
 
